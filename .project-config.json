@@ -1,0 +1,43 @@
+{
+  "build_command": "pnpm run build",
+  "capabilities": [
+    "server",
+    "db",
+    "user"
+  ],
+  "dev_command": "pnpm run dev",
+  "env_vars": {
+    "DATABASE_URL": "mysql://4Du1AqXTKKgecK8.root:R9SpGpy2bS7KrA3zs83W@gateway06.us-east-1.prod.aws.tidbcloud.com:4000/JraqcRjUR7UDggV83SgGQk?ssl={\"rejectUnauthorized\":true}"
+  },
+  "experiments": [
+    "no_db_push"
+  ],
+  "git_remote": {
+    "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663386286619/JraqcRjUR7UDggV83SgGQk",
+    "access_key_id": "ASIAZV3A2ECZO55TQ45Z",
+    "secret_access_key": "VAN4Q8inEaO5BtI2c8AF4eHeZyFa6G8GAY4TByqE",
+    "session_token": "IQoJb3JpZ2luX2VjEAUaCXVzLWVhc3QtMSJIMEYCIQDqnSTZlYCGAIux0op4ZUamGMjLt4P9KlMGKZPbhpkLfQIhAJc1vU3iLXG30vuDYyXhWvKzkUs6N1tGxBEN/KA3fevBKv8DCM3//////////wEQBBoMNjY1Mzg2MDk4ODY2IgwbSii3Wx9G5Vt8fUQq0wOvKp7VadROsDZDr9XQydWyPLoYKn9lwB+lFxG42RVwRCruB0qCLPFL6ByjQeAopeggE6QQTysJsVDgJ8ly5dWcPNWrVkIsjTAKKP9SCHLwE/sKXpFULt6Ltu8oacVRZnYwJrvJwSWSAyIHQ4KMuNAVXVCy1mwPI+1LkLurqlmamOU2MiH5pJhsovBOYQaswounVU/K5aUxfUn805NRh4K4G4bP1h83LEmkvr4KEPLKa+5NgcQb1s+jTQcc8IP3HaQlrPLb5aVGszbqGPvOvuObEAysy/nMiLA6bC2ECrCXwBCqZoMY3AOkU2qfFhx3d6fW8s09a8xGuX+S3Khk6ye4xznOTL+4lXCy0Z/IQoOIMnTfgNTQDndXlqYI1eYOWiX03lrGEQZT8tTZ6glHL9Xs45Mm3zWa/SvJaKrHSNeJtVsWI2HVORjeMaKyA3zwhK5gvRfFfXxGiPBWigKmW8MT0pvpVGJtx/Hg1Q8t5LJoh0OB7kysPxh3DnuBw9YBY51zadDGu9b9XoEYzICoGmbwJRQ7T4ikg4dFt5YNyzH2B+5UvGybqrkBvjeWQpYKV++s/W9SUAekY7kbpolUgn+2MbYVECo8DxMMfIVsLnvvqLTODjDXyq/QBjqcAcE1Fq+mHu9Eot3AfaXs+/utAJlV7gxO0nQdDTnrki9i9OX+swLNQIJ0zex/3D9CRlRn1d60rzuIRjjNWalvlT5xuXpt0Q8mPwdne5mdVaM9QNkRLoGJnGYYY86befckx1yLWc7QGDuU4l17nMGStND6tn4V1/rwIV8RHJ3YqtwwDI3Z4o9EoUWWcztaahyqL9CmEmjNXhSxkfO3pA==",
+    "expiration": "2026-05-19T16:21:43.000Z"
+  },
+  "name": "alimentador_gatas",
+  "path": "/home/ubuntu/alimentador_gatas",
+  "port": 3000,
+  "secrets": {
+    "BUILT_IN_FORGE_API_KEY": "n9mNhUYWrGpXLp7B6PCraP",
+    "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
+    "JWT_SECRET": "DYAXwNUwRev7kqyimqkibx",
+    "OAUTH_SERVER_URL": "https://api.manus.im",
+    "OWNER_NAME": "Juan Carlos Peccin de Souza",
+    "OWNER_OPEN_ID": "65vKi8CrxKKdE3wpBqU3pA",
+    "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
+    "VITE_ANALYTICS_WEBSITE_ID": "6571ed4c-2b81-48cf-814b-260e94498674",
+    "VITE_APP_ID": "JraqcRjUR7UDggV83SgGQk",
+    "VITE_APP_LOGO": "",
+    "VITE_APP_TITLE": "Painel de Controle - Alimentador Automático",
+    "VITE_FRONTEND_FORGE_API_KEY": "jap6GdLWC9WjAiWddVcso5",
+    "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
+    "VITE_OAUTH_PORTAL_URL": "https://manus.im"
+  },
+  "template_id": "web-db-user",
+  "test_command": "pnpm test"
+}
