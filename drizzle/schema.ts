@@ -25,4 +25,64 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Histórico de alimentações realizadas
+ */
+export const feedingSessions = mysqlTable("feeding_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  type: mysqlEnum("type", ["manual", "automatic"]).notNull(),
+  mealNumber: int("meal_number").notNull(), // 1 ou 2
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type FeedingSession = typeof feedingSessions.$inferSelect;
+export type InsertFeedingSession = typeof feedingSessions.$inferInsert;
+
+/**
+ * Status atual do dispositivo ESP8266
+ */
+export const deviceStatus = mysqlTable("device_status", {
+  id: int("id").autoincrement().primaryKey(),
+  meal1Completed: int("meal1_completed").default(0).notNull(), // 0 ou 1
+  meal2Completed: int("meal2_completed").default(0).notNull(), // 0 ou 1
+  currentTime: varchar("current_time", { length: 64 }),
+  nextMealTime: varchar("next_meal_time", { length: 64 }),
+  isOnline: int("is_online").default(0).notNull(),
+  lastHeartbeat: timestamp("last_heartbeat").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DeviceStatus = typeof deviceStatus.$inferSelect;
+export type InsertDeviceStatus = typeof deviceStatus.$inferInsert;
+
+/**
+ * Horários programados para alimentação
+ */
+export const feedingSchedules = mysqlTable("feeding_schedules", {
+  id: int("id").autoincrement().primaryKey(),
+  mealNumber: int("meal_number").notNull(), // 1 ou 2
+  hour: int("hour").notNull(),
+  minute: int("minute").notNull(),
+  enabled: int("enabled").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type FeedingSchedule = typeof feedingSchedules.$inferSelect;
+export type InsertFeedingSchedule = typeof feedingSchedules.$inferInsert;
+
+/**
+ * Comandos pendentes para o ESP8266
+ */
+export const pendingCommands = mysqlTable("pending_commands", {
+  id: int("id").autoincrement().primaryKey(),
+  command: mysqlEnum("command", ["feed_meal_1", "feed_meal_2", "sync_status"]).notNull(),
+  status: mysqlEnum("status", ["pending", "acknowledged", "completed", "failed"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  completedAt: timestamp("completed_at"),
+});
+
+export type PendingCommand = typeof pendingCommands.$inferSelect;
+export type InsertPendingCommand = typeof pendingCommands.$inferInsert;

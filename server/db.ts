@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, deviceStatus, feedingSessions, feedingSchedules, InsertDeviceStatus, pendingCommands, InsertPendingCommand } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -87,6 +87,107 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getOrCreateDeviceStatus() {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const existing = await db.select().from(deviceStatus).limit(1);
+  if (existing.length > 0) return existing[0];
+
+  await db.insert(deviceStatus).values({
+    meal1Completed: 0,
+    meal2Completed: 0,
+    isOnline: 0,
+  });
+
+  const result = await db.select().from(deviceStatus).limit(1);
+  return result[0];
+}
+
+export async function updateDeviceStatus(data: Partial<InsertDeviceStatus>) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const status = await getOrCreateDeviceStatus();
+  if (!status) return undefined;
+
+  await db.update(deviceStatus).set(data).where(eq(deviceStatus.id, status.id));
+  return db.select().from(deviceStatus).where(eq(deviceStatus.id, status.id)).limit(1);
+}
+
+export async function addFeedingSession(type: 'manual' | 'automatic', mealNumber: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  await db.insert(feedingSessions).values({
+    type,
+    mealNumber,
+  });
+}
+
+export async function getFeedingHistory(limit: number = 20) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(feedingSessions).orderBy(feedingSessions.id).limit(limit);
+}
+
+export async function getFeedingSchedules() {
+  const db = await getDb();
+  if (!db) return [];
+
+  const schedules = await db.select().from(feedingSchedules).orderBy((t) => t.mealNumber);
+  // Ensure we have both meals
+  if (schedules.length === 0) {
+    await updateFeedingSchedule(1, 3, 18);
+    await updateFeedingSchedule(2, 3, 19);
+    return getFeedingSchedules();
+  }
+  return schedules;
+}
+
+export async function updateFeedingSchedule(mealNumber: number, hour: number, minute: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const existing = await db.select().from(feedingSchedules).where(eq(feedingSchedules.mealNumber, mealNumber));
+  
+  if (existing.length > 0) {
+    await db.update(feedingSchedules).set({ hour, minute }).where(eq(feedingSchedules.mealNumber, mealNumber));
+  } else {
+    await db.insert(feedingSchedules).values({ mealNumber, hour, minute });
+  }
+}
+
+export async function createPendingCommand(command: 'feed_meal_1' | 'feed_meal_2' | 'sync_status') {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.insert(pendingCommands).values({ command });
+  return result;
+}
+
+export async function getPendingCommands(limit: number = 5) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(pendingCommands).where(eq(pendingCommands.status, 'pending')).limit(limit);
+}
+
+export async function acknowledgeCommand(commandId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  return db.update(pendingCommands).set({ status: 'acknowledged', acknowledgedAt: new Date() }).where(eq(pendingCommands.id, commandId));
+}
+
+export async function completeCommand(commandId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  return db.update(pendingCommands).set({ status: 'completed', completedAt: new Date() }).where(eq(pendingCommands.id, commandId));
 }
 
 // TODO: add feature queries here as your schema grows.
