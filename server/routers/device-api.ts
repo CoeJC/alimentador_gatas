@@ -188,16 +188,12 @@ router.get("/status", (req, res) => {
  * Retorna o histórico de alimentações
  */
 router.get("/history", (req, res) => {
-  console.log("[DEVICE] History recebido");
-  try {
-    res.json({
-      success: true,
-      data: feedingHistory,
-    });
-  } catch (error) {
-    console.error("[DEVICE] Erro ao obter histórico:", error);
-    res.status(500).json({ success: false, error: "Erro ao obter histórico" });
-  }
-});
+
+  res.json({
+    success: true,
+    data: feedingHistory,
+  });
+
+});;
 
 export default router;
