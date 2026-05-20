@@ -28,9 +28,6 @@ export default function FeederDashboard() {
   // =========================
   // STATUS
   // =========================
-  const statusQuery = trpc.feeder.getStatus.useQuery(undefined, {
-    refetchInterval: autoRefresh ? 5000 : false,
-  });
 
   // =========================
   // HISTÓRICO
@@ -49,15 +46,16 @@ export default function FeederDashboard() {
   }
 
   useEffect(() => {
+  carregarHistorico();
+  carregarStatus();
+
+  const interval = setInterval(() => {
     carregarHistorico();
+    carregarStatus();
+  }, 5000);
 
-    const interval = setInterval(() => {
-      carregarHistorico();
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
-
+  return () => clearInterval(interval);
+}, []);
   // =========================
   // ALIMENTAÇÃO MANUAL
   // =========================
@@ -80,7 +78,6 @@ export default function FeederDashboard() {
 
         toast.success("Alimentação manual acionada! 🐱");
 
-        statusQuery.refetch();
         carregarHistorico();
       } catch (error: any) {
         toast.error(`Erro: ${error.message}`);
@@ -90,22 +87,39 @@ export default function FeederDashboard() {
     isPending: false,
   };
 
-  // =========================
-  // STATUS FORMATADO
-  // =========================
-  const apiDevice = statusQuery.data?.data;
+const [status, setStatus] = useState({
+  meal1Completed: 0,
+  meal2Completed: 0,
+  currentTime: "--:--",
+  isOnline: 0,
+  nextMealTime: "08:00",
+  lastHeartbeat: null as any,
+});
 
-  const status = {
-    meal1Completed: apiDevice?.meal1Completed || 0,
-    meal2Completed: apiDevice?.meal2Completed || 0,
-    currentTime: apiDevice?.currentTime || "--:--",
-    isOnline: apiDevice?.isOnline || 0,
-    nextMealTime: "08:00",
-    lastHeartbeat: apiDevice?.lastUpdate
-      ? new Date(apiDevice.lastUpdate)
-      : null,
-  };
+async function carregarStatus() {
+  try {
+    const response = await fetch("/device/status");
+    const json = await response.json();
 
+    console.log("STATUS:", json);
+
+    if (json.success) {
+      setStatus({
+        meal1Completed: json.data.meal1Completed || 0,
+        meal2Completed: json.data.meal2Completed || 0,
+        currentTime: json.data.currentTime || "--:--",
+        isOnline: json.data.isOnline || 0,
+        nextMealTime: "08:00",
+        lastHeartbeat: json.data.lastUpdate
+          ? new Date(json.data.lastUpdate)
+          : null,
+      });
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+  
   // =========================
   // HORÁRIOS
   // =========================
@@ -351,19 +365,6 @@ export default function FeederDashboard() {
               </Button>
             </div>
 
-            {statusQuery.isLoading && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Carregando...
-              </div>
-            )}
-
-            {statusQuery.isError && (
-              <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 p-3 rounded">
-                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>Erro ao carregar status</span>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
