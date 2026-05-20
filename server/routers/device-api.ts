@@ -8,6 +8,7 @@ let deviceStatusCache: any = {
   meal2Completed: 0,
   currentTime: "00:00",
   isOnline: 0,
+  lastUpdate: null,
 };
 
 let feedingHistory: any[] = [];
@@ -66,6 +67,7 @@ router.post("/update-status", (req, res) => {
     if (meal2Completed !== undefined) deviceStatusCache.meal2Completed = meal2Completed;
     if (currentTime !== undefined) deviceStatusCache.currentTime = currentTime;
     if (isOnline !== undefined) deviceStatusCache.isOnline = isOnline;
+    deviceStatusCache.lastUpdate = Date.now();
 
     console.log("[DEVICE] Status atualizado:", deviceStatusCache);
 
@@ -144,12 +146,21 @@ router.post("/feed-manual", (req, res) => {
  * Retorna o status atual do dispositivo
  */
 router.get("/status", (req, res) => {
-  console.log("[DEVICE] Status recebido");
-  try {
-    res.json({
-      success: true,
-      data: deviceStatusCache,
-    });
+
+  const now = Date.now();
+
+  const lastUpdate = deviceStatusCache.lastUpdate || 0;
+
+  // offline se ESP não envia status há mais de 40s
+  if (now - lastUpdate > 40000) {
+    deviceStatusCache.isOnline = 0;
+  }
+
+  res.json({
+    success: true,
+    data: deviceStatusCache,
+  });
+});
   } catch (error) {
     console.error("[DEVICE] Erro ao obter status:", error);
     res.status(500).json({ success: false, error: "Erro ao obter status" });
