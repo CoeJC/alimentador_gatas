@@ -49,13 +49,17 @@ export default function FeederDashboard() {
   isPending: false,
 };
 
-  const status = {
-  meal1Completed: statusQuery.data?.device?.meal1Completed || 0,
-  meal2Completed: statusQuery.data?.device?.meal2Completed || 0,
-  currentTime: statusQuery.data?.device?.currentTime || "--:--",
-  isOnline: 1,
+  const apiDevice = statusQuery.data?.device;
+
+const status = {
+  meal1Completed: apiDevice?.meal1Completed || 0,
+  meal2Completed: apiDevice?.meal2Completed || 0,
+  currentTime: apiDevice?.currentTime || "--:--",
+  isOnline: apiDevice?.isOnline || 0,
   nextMealTime: "08:00",
-  lastHeartbeat: new Date().toISOString(),
+  lastHeartbeat: apiDevice?.currentTime
+    ? new Date().toISOString()
+    : null,
 };
   const schedules = [
   {
