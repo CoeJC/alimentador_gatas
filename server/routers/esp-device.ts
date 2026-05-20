@@ -7,6 +7,7 @@ const router = Router();
  * Health check simples
  */
 router.get("/health", (req, res) => {
+  console.log("[ESP] Health check recebido");
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
@@ -41,6 +42,7 @@ router.get("/status", (req, res) => {
  * Atualiza o status do dispositivo (chamado pelo ESP8266)
  */
 router.post("/update-status", (req, res) => {
+  console.log("[ESP] Update status recebido:", req.body);
   try {
     const { meal1Completed, meal2Completed, currentTime, isOnline } = req.body;
 

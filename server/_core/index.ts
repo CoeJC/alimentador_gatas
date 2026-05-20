@@ -6,6 +6,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import espDeviceRouter from "../routers/esp-device";
+import deviceApiRouter from "../routers/device-api";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
@@ -38,8 +39,10 @@ async function startServer() {
   registerOAuthRoutes(app);
   
   // API routes MUST be registered BEFORE Vite/static middleware
-  // ESP8266 REST API
+  // ESP8266 REST API (legacy path)
   app.use("/api/esp", espDeviceRouter);
+  // Device API (new path that bypasses proxy issues)
+  app.use("/device", deviceApiRouter);
   // tRPC API
   app.use(
     "/api/trpc",
