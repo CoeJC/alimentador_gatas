@@ -158,12 +158,16 @@ router.get("/status", (req, res) => {
 
   const now = Date.now();
 
-  const lastUpdate = deviceStatusCache.lastUpdate || 0;
+  const lastUpdate = deviceStatusCache.lastUpdate
+  ? new Date(deviceStatusCache.lastUpdate).getTime()
+  : 0;
 
-  // considera offline após 40 segundos sem atualização
-  if (now - lastUpdate > 40000) {
-    deviceStatusCache.isOnline = 0;
-  }
+// considera offline após 40 segundos sem atualização
+if (now - lastUpdate > 40000) {
+  deviceStatusCache.isOnline = 0;
+} else {
+  deviceStatusCache.isOnline = 1;
+}
 
   try {
 
@@ -194,6 +198,6 @@ router.get("/history", (req, res) => {
     data: feedingHistory,
   });
 
-});;
+});
 
 export default router;
