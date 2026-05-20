@@ -12,7 +12,9 @@ export async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  // ===== MIDDLEWARES =====
+  // =========================
+  // MIDDLEWARES
+  // =========================
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ extended: true }));
 
@@ -24,32 +26,40 @@ export async function startServer() {
     next();
   });
 
-  // ===== OAUTH (já existe no seu projeto) =====
+  // =========================
+  // OAUTH (mantido como já existe)
+  // =========================
   registerOAuthRoutes(app);
 
-  // ===== API =====
+  // =========================
+  // API DO SEU PROJETO
+  // =========================
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true });
   });
 
   app.use("/api/menu", MenuRouter);
 
-  // ===== FRONTEND (VITE BUILD) =====
-  const publicPath = path.join(process.cwd(), "dist/public");
+  // =========================
+  // FRONTEND (CLIENT HTML)
+  // =========================
+  const clientPath = path.join(process.cwd(), "client");
 
-  app.use(express.static(publicPath));
+  app.use(express.static(clientPath));
 
-  // rota principal do site
+  // rota principal
   app.get("/", (_req, res) => {
-    res.sendFile(path.join(publicPath, "index.html"));
+    res.sendFile(path.join(clientPath, "index.html"));
   });
 
-  // fallback (React/Vite SPA)
+  // fallback SPA (evita erro ao atualizar página)
   app.get("*", (_req, res) => {
-    res.sendFile(path.join(publicPath, "index.html"));
+    res.sendFile(path.join(clientPath, "index.html"));
   });
 
-  // ===== START SERVER =====
+  // =========================
+  // START SERVER
+  // =========================
   const PORT = process.env.PORT || 3000;
 
   server.listen(PORT, () => {
