@@ -6,7 +6,7 @@ const router = Router();
 let deviceStatusCache: any = {
   meal1Completed: 0,
   meal2Completed: 0,
-  currentTime: "00:00",
+  currentTime: "--:--",
   isOnline: 0,
   lastUpdate: null,
 };
@@ -63,11 +63,20 @@ router.post("/update-status", (req, res) => {
   try {
     const { meal1Completed, meal2Completed, currentTime, isOnline } = req.body;
 
-    if (meal1Completed !== undefined) deviceStatusCache.meal1Completed = meal1Completed;
-    if (meal2Completed !== undefined) deviceStatusCache.meal2Completed = meal2Completed;
-    if (currentTime !== undefined) deviceStatusCache.currentTime = currentTime;
-    if (isOnline !== undefined) deviceStatusCache.isOnline = isOnline;
-    deviceStatusCache.lastUpdate = Date.now();
+    if (meal1Completed !== undefined)
+  deviceStatusCache.meal1Completed = meal1Completed;
+
+if (meal2Completed !== undefined)
+  deviceStatusCache.meal2Completed = meal2Completed;
+
+if (currentTime !== undefined)
+  deviceStatusCache.currentTime = currentTime;
+
+if (isOnline !== undefined)
+  deviceStatusCache.isOnline = isOnline;
+
+// IMPORTANTE
+deviceStatusCache.lastUpdate = new Date().toISOString();
 
     console.log("[DEVICE] Status atualizado:", deviceStatusCache);
 
