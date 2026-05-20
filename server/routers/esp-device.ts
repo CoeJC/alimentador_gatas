@@ -1,56 +1,21 @@
 import { z } from "zod";
+import { eq, desc } from "drizzle-orm";
+
 import { router, publicProcedure } from "../_core/trpc";
 import { db } from "../db";
+
 import {
   feederHistory,
   feederStatus,
   pendingCommands,
 } from "../../drizzle/schema";
-import { desc, eq } from "drizzle-orm";
 
-export const espDeviceRouter = router({
-
-  /*
-   * ============================================================
-   * STATUS
-   * ============================================================
-   */
-
-  getStatus: publicProcedure.query(async () => {
-
-    const status = await db
-      .select()
-      .from(feederStatus)
-      .limit(1);
-
-    if (status.length === 0) {
-
-      return {
-        success: true,
-        data: {
-          meal1Completed: 0,
-          meal2Completed: 0,
-          meal3Completed: 0,
-          meal4Completed: 0,
-          meal5Completed: 0,
-          meal6Completed: 0,
-          currentTime: "--:--",
-          isOnline: 0,
-          lastUpdate: null,
-        },
-      };
-    }
-
-    return {
-      success: true,
-      data: status[0],
-    };
-  }),
+const espDeviceRouter = router({
 
   /*
-   * ============================================================
-   * UPDATE STATUS
-   * ============================================================
+   * =========================================================
+   * STATUS DO ESP
+   * =========================================================
    */
 
   updateStatus: publicProcedure
@@ -73,21 +38,7 @@ export const espDeviceRouter = router({
         .from(feederStatus)
         .limit(1);
 
-      if (existing.length === 0) {
-
-        await db.insert(feederStatus).values({
-          meal1Completed: input.meal1Completed,
-          meal2Completed: input.meal2Completed,
-          meal3Completed: input.meal3Completed,
-          meal4Completed: input.meal4Completed,
-          meal5Completed: input.meal5Completed,
-          meal6Completed: input.meal6Completed,
-          currentTime: input.currentTime,
-          isOnline: input.isOnline,
-          lastUpdate: new Date(),
-        });
-
-      } else {
+      if (existing.length > 0) {
 
         await db
           .update(feederStatus)
@@ -103,6 +54,20 @@ export const espDeviceRouter = router({
             lastUpdate: new Date(),
           })
           .where(eq(feederStatus.id, existing[0].id));
+
+      } else {
+
+        await db.insert(feederStatus).values({
+          meal1Completed: input.meal1Completed,
+          meal2Completed: input.meal2Completed,
+          meal3Completed: input.meal3Completed,
+          meal4Completed: input.meal4Completed,
+          meal5Completed: input.meal5Completed,
+          meal6Completed: input.meal6Completed,
+          currentTime: input.currentTime,
+          isOnline: input.isOnline,
+          lastUpdate: new Date(),
+        });
       }
 
       return {
@@ -111,29 +76,9 @@ export const espDeviceRouter = router({
     }),
 
   /*
-   * ============================================================
-   * HISTÓRICO
-   * ============================================================
-   */
-
-  getHistory: publicProcedure.query(async () => {
-
-    const history = await db
-      .select()
-      .from(feederHistory)
-      .orderBy(desc(feederHistory.timestamp))
-      .limit(100);
-
-    return {
-      success: true,
-      data: history,
-    };
-  }),
-
-  /*
-   * ============================================================
+   * =========================================================
    * REGISTRAR ALIMENTAÇÃO
-   * ============================================================
+   * =========================================================
    */
 
   recordFeeding: publicProcedure
@@ -157,63 +102,49 @@ export const espDeviceRouter = router({
     }),
 
   /*
-   * ============================================================
-   * ENVIAR COMANDO MANUAL
-   * ============================================================
+   * =========================================================
+   * PEGAR COMANDO PENDENTE
+   * =========================================================
    */
 
-  feedManual: publicProcedure
-    .input(
-      z.object({
-        mealNumber: z.number(),
-      })
-    )
-    .mutation(async ({ input }) => {
+  getPendingCommand: publicProcedure
+    .query(async () => {
 
-      await db.insert(pendingCommands).values({
-        command: `feed_meal_${input.mealNumber}`,
-        createdAt: new Date(),
-      });
+      const command = await db
+        .select()
+        .from(pendingCommands)
+        .where(eq(pendingCommands.executed, 0))
+        .orderBy(desc(pendingCommands.createdAt))
+        .limit(1);
+
+      if (command.length === 0) {
+
+        return {
+          success: true,
+          data: null,
+        };
+      }
+
+      /*
+       * marca comando como executado
+       */
+
+      await db
+        .update(pendingCommands)
+        .set({
+          executed: 1,
+        })
+        .where(eq(pendingCommands.id, command[0].id));
 
       return {
         success: true,
+        data: {
+          type: command[0].command,
+          timestamp: command[0].createdAt,
+        },
       };
     }),
 
-  /*
-   * ============================================================
-   * PEGAR COMANDO PENDENTE
-   * ============================================================
-   */
-
-  getPendingCommand: publicProcedure.query(async () => {
-
-    const commands = await db
-      .select()
-      .from(pendingCommands)
-      .orderBy(desc(pendingCommands.createdAt))
-      .limit(1);
-
-    if (commands.length === 0) {
-
-      return {
-        success: true,
-        data: null,
-      };
-    }
-
-    const command = commands[0];
-
-    await db
-      .delete(pendingCommands)
-      .where(eq(pendingCommands.id, command.id));
-
-    return {
-      success: true,
-      data: {
-        type: command.command,
-        timestamp: command.createdAt,
-      },
-    };
-  }),
 });
+
+export default espDeviceRouter;
