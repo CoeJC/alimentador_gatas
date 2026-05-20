@@ -1,21 +1,12 @@
 import { z } from "zod";
-import { router, publicProcedure } from "../trpc";
-
-let pendingCommand: string | null = null;
-
-let deviceStatus = {
-  meal1Completed: 0,
-  meal2Completed: 0,
-  meal3Completed: 0,
-  meal4Completed: 0,
-  meal5Completed: 0,
-  meal6Completed: 0,
-  currentTime: "--:--",
-  isOnline: 0,
-  lastUpdate: new Date(),
-};
-
-let feedingHistory: any[] = [];
+import { router, publicProcedure } from "../_core/trpc";
+import { db } from "../db";
+import {
+  feederHistory,
+  feederStatus,
+  pendingCommands,
+} from "../../drizzle/schema";
+import { desc, eq } from "drizzle-orm";
 
 export const espDeviceRouter = router({
 
@@ -25,11 +16,34 @@ export const espDeviceRouter = router({
    * ============================================================
    */
 
-  getStatus: publicProcedure.query(() => {
+  getStatus: publicProcedure.query(async () => {
+
+    const status = await db
+      .select()
+      .from(feederStatus)
+      .limit(1);
+
+    if (status.length === 0) {
+
+      return {
+        success: true,
+        data: {
+          meal1Completed: 0,
+          meal2Completed: 0,
+          meal3Completed: 0,
+          meal4Completed: 0,
+          meal5Completed: 0,
+          meal6Completed: 0,
+          currentTime: "--:--",
+          isOnline: 0,
+          lastUpdate: null,
+        },
+      };
+    }
 
     return {
       success: true,
-      data: deviceStatus,
+      data: status[0],
     };
   }),
 
@@ -52,14 +66,44 @@ export const espDeviceRouter = router({
         isOnline: z.number(),
       })
     )
-    .mutation(({ input }) => {
+    .mutation(async ({ input }) => {
 
-      deviceStatus = {
-        ...input,
-        lastUpdate: new Date(),
-      };
+      const existing = await db
+        .select()
+        .from(feederStatus)
+        .limit(1);
 
-      console.log("[STATUS] Atualizado:", deviceStatus);
+      if (existing.length === 0) {
+
+        await db.insert(feederStatus).values({
+          meal1Completed: input.meal1Completed,
+          meal2Completed: input.meal2Completed,
+          meal3Completed: input.meal3Completed,
+          meal4Completed: input.meal4Completed,
+          meal5Completed: input.meal5Completed,
+          meal6Completed: input.meal6Completed,
+          currentTime: input.currentTime,
+          isOnline: input.isOnline,
+          lastUpdate: new Date(),
+        });
+
+      } else {
+
+        await db
+          .update(feederStatus)
+          .set({
+            meal1Completed: input.meal1Completed,
+            meal2Completed: input.meal2Completed,
+            meal3Completed: input.meal3Completed,
+            meal4Completed: input.meal4Completed,
+            meal5Completed: input.meal5Completed,
+            meal6Completed: input.meal6Completed,
+            currentTime: input.currentTime,
+            isOnline: input.isOnline,
+            lastUpdate: new Date(),
+          })
+          .where(eq(feederStatus.id, existing[0].id));
+      }
 
       return {
         success: true,
@@ -68,58 +112,21 @@ export const espDeviceRouter = router({
 
   /*
    * ============================================================
-   * ALIMENTAÇÃO MANUAL
+   * HISTÓRICO
    * ============================================================
    */
 
-  feedManual: publicProcedure
-    .input(
-      z.object({
-        mealNumber: z.number().min(1).max(6),
-      })
-    )
-    .mutation(({ input }) => {
+  getHistory: publicProcedure.query(async () => {
 
-      pendingCommand = `feed_meal_${input.mealNumber}`;
-
-      console.log(
-        `[MANUAL] Comando enviado: ${pendingCommand}`
-      );
-
-      return {
-        success: true,
-        command: pendingCommand,
-      };
-    }),
-
-  /*
-   * ============================================================
-   * PENDING COMMAND
-   * ============================================================
-   */
-
-  getPendingCommand: publicProcedure.query(() => {
-
-    if (!pendingCommand) {
-
-      return {
-        success: true,
-        data: null,
-      };
-    }
-
-    const command = {
-      type: pendingCommand,
-      timestamp: new Date(),
-    };
-
-    console.log("[POLLING] Comando entregue:", command);
-
-    pendingCommand = null;
+    const history = await db
+      .select()
+      .from(feederHistory)
+      .orderBy(desc(feederHistory.timestamp))
+      .limit(100);
 
     return {
       success: true,
-      data: command,
+      data: history,
     };
   }),
 
@@ -132,62 +139,81 @@ export const espDeviceRouter = router({
   recordFeeding: publicProcedure
     .input(
       z.object({
-        mealNumber: z.number().min(1).max(6),
+        mealNumber: z.number(),
         type: z.string(),
       })
     )
-    .mutation(({ input }) => {
+    .mutation(async ({ input }) => {
 
-      const registro = {
-        id: Date.now(),
+      await db.insert(feederHistory).values({
         mealNumber: input.mealNumber,
         type: input.type,
         timestamp: new Date(),
-      };
-
-      feedingHistory.push(registro);
-
-      console.log("[HISTORICO] Novo registro:", registro);
+      });
 
       return {
         success: true,
-        data: registro,
       };
     }),
 
   /*
    * ============================================================
-   * HISTÓRICO
+   * ENVIAR COMANDO MANUAL
    * ============================================================
    */
 
-  getHistory: publicProcedure.query(() => {
+  feedManual: publicProcedure
+    .input(
+      z.object({
+        mealNumber: z.number(),
+      })
+    )
+    .mutation(async ({ input }) => {
 
-    return {
-      success: true,
-      data: feedingHistory,
-    };
-  }),
+      await db.insert(pendingCommands).values({
+        command: `feed_meal_${input.mealNumber}`,
+        createdAt: new Date(),
+      });
+
+      return {
+        success: true,
+      };
+    }),
 
   /*
    * ============================================================
-   * RESET
+   * PEGAR COMANDO PENDENTE
    * ============================================================
    */
 
-  resetMeals: publicProcedure.mutation(() => {
+  getPendingCommand: publicProcedure.query(async () => {
 
-    deviceStatus.meal1Completed = 0;
-    deviceStatus.meal2Completed = 0;
-    deviceStatus.meal3Completed = 0;
-    deviceStatus.meal4Completed = 0;
-    deviceStatus.meal5Completed = 0;
-    deviceStatus.meal6Completed = 0;
+    const commands = await db
+      .select()
+      .from(pendingCommands)
+      .orderBy(desc(pendingCommands.createdAt))
+      .limit(1);
 
-    console.log("[RESET] Refeições resetadas");
+    if (commands.length === 0) {
+
+      return {
+        success: true,
+        data: null,
+      };
+    }
+
+    const command = commands[0];
+
+    await db
+      .delete(pendingCommands)
+      .where(eq(pendingCommands.id, command.id));
 
     return {
       success: true,
+      data: {
+        type: command.command,
+        timestamp: command.createdAt,
+      },
     };
   }),
 });
