@@ -1,27 +1,30 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
 
-let pendingCommand: any = null;
-
-let deviceStatus = {
-  meal1Completed: 0,
-  meal2Completed: 0,
-  meal3Completed: 0,
-  meal4Completed: 0,
-  meal5Completed: 0,
-  meal6Completed: 0,
-  currentTime: "--:--",
-  isOnline: 0,
-  lastUpdate: null as Date | null,
+type FeedingHistory = {
+  id: number;
+  mealNumber: number;
+  type: string;
+  timestamp: string;
 };
 
-let feedingHistory: any[] = [];
+let feedingHistory: FeedingHistory[] = [];
+
+let pendingCommand: string | null = null;
+
+let deviceStatus = {
+  completedMeals: [] as number[],
+  currentTime: "--:--",
+  isOnline: 0,
+  lastUpdate: null as string | null,
+};
 
 export const espDeviceRouter = router({
 
-  // =========================
+  // =====================================================
   // STATUS
-  // =========================
+  // =====================================================
+
   getStatus: publicProcedure.query(() => {
     return {
       success: true,
@@ -29,18 +32,10 @@ export const espDeviceRouter = router({
     };
   }),
 
-  // =========================
-  // UPDATE STATUS
-  // =========================
   updateStatus: publicProcedure
     .input(
       z.object({
-        meal1Completed: z.number(),
-        meal2Completed: z.number(),
-        meal3Completed: z.number(),
-        meal4Completed: z.number(),
-        meal5Completed: z.number(),
-        meal6Completed: z.number(),
+        completedMeals: z.array(z.number()).default([]),
         currentTime: z.string(),
         isOnline: z.number(),
       })
@@ -48,8 +43,10 @@ export const espDeviceRouter = router({
     .mutation(({ input }) => {
 
       deviceStatus = {
-        ...input,
-        lastUpdate: new Date(),
+        completedMeals: input.completedMeals,
+        currentTime: input.currentTime,
+        isOnline: input.isOnline,
+        lastUpdate: new Date().toISOString(),
       };
 
       return {
@@ -57,45 +54,17 @@ export const espDeviceRouter = router({
       };
     }),
 
-  // =========================
-  // FEED MANUAL
-  // =========================
-  feedManual: publicProcedure
-    .input(
-      z.object({
-        mealNumber: z.number(),
-      })
-    )
-    .mutation(({ input }) => {
+  // =====================================================
+  // HISTÓRICO
+  // =====================================================
 
-      pendingCommand = {
-        type: `feed_meal_${input.mealNumber}`,
-        timestamp: new Date(),
-      };
-
-      return {
-        success: true,
-      };
-    }),
-
-  // =========================
-  // GET PENDING COMMAND
-  // =========================
-  getPendingCommand: publicProcedure.query(() => {
-
-    const command = pendingCommand;
-
-    pendingCommand = null;
-
+  getHistory: publicProcedure.query(() => {
     return {
       success: true,
-      data: command,
+      data: feedingHistory,
     };
   }),
 
-  // =========================
-  // RECORD FEEDING
-  // =========================
   recordFeeding: publicProcedure
     .input(
       z.object({
@@ -105,34 +74,80 @@ export const espDeviceRouter = router({
     )
     .mutation(({ input }) => {
 
-      const newRecord = {
+      feedingHistory.push({
         id: Date.now(),
         mealNumber: input.mealNumber,
         type: input.type,
-        timestamp: new Date(),
-      };
+        timestamp: new Date().toISOString(),
+      });
 
-      feedingHistory.push(newRecord);
-
-      // mantém apenas os últimos 100 registros
-      if (feedingHistory.length > 100) {
-        feedingHistory.shift();
+      // marca refeição como concluída
+      if (
+        !deviceStatus.completedMeals.includes(input.mealNumber)
+      ) {
+        deviceStatus.completedMeals.push(input.mealNumber);
       }
 
       return {
         success: true,
-        data: newRecord,
       };
     }),
 
-  // =========================
-  // HISTORY
-  // =========================
-  getHistory: publicProcedure.query(() => {
+  // =====================================================
+  // COMANDO MANUAL
+  // =====================================================
+
+  feedManual: publicProcedure
+    .input(
+      z.object({
+        mealNumber: z.number(),
+      })
+    )
+    .mutation(({ input }) => {
+
+      pendingCommand = `feed_meal_${input.mealNumber}`;
+
+      return {
+        success: true,
+      };
+    }),
+
+  // =====================================================
+  // ESP POLLING
+  // =====================================================
+
+  getPendingCommand: publicProcedure.query(() => {
+
+    if (!pendingCommand) {
+      return {
+        success: true,
+        data: null,
+      };
+    }
+
+    const command = pendingCommand;
+
+    pendingCommand = null;
 
     return {
       success: true,
-      data: feedingHistory,
+      data: {
+        type: command,
+        timestamp: new Date().toISOString(),
+      },
+    };
+  }),
+
+  // =====================================================
+  // RESET DIA
+  // =====================================================
+
+  resetMeals: publicProcedure.mutation(() => {
+
+    deviceStatus.completedMeals = [];
+
+    return {
+      success: true,
     };
   }),
 });
