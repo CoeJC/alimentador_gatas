@@ -24,45 +24,34 @@ export async function startServer() {
   });
 
   // ======================
-  // OAUTH
+  // API PRIMEIRO (IMPORTANTE)
   // ======================
   registerOAuthRoutes(app);
-
-  // ======================
-  // API (TEM QUE VIR ANTES DO FRONTEND)
-  // ======================
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true });
   });
 
   app.get("/device/pending-command", (_req, res) => {
-    res.json({
-      command: null
-    });
+    res.json({ command: null });
   });
 
   app.use("/api/menu", MenuRouter);
 
   // ======================
-  // FRONTEND
+  // FRONTEND CORRETO (VITE BUILD)
   // ======================
-  const clientPath = path.join(process.cwd(), "client");
+  const frontendPath = path.join(process.cwd(), "dist/public");
 
-  app.use(express.static(clientPath));
+  app.use(express.static(frontendPath));
 
-  // ⚠️ IMPORTANTE: essa rota vem POR ÚLTIMO
-  app.get("/", (_req, res) => {
-    res.sendFile(path.join(clientPath, "index.html"));
-  });
-
-  // fallback só depois de tudo
   app.get("*", (req, res) => {
+    // não intercepta API
     if (req.path.startsWith("/api") || req.path.startsWith("/device")) {
       return res.status(404).json({ error: "Not found" });
     }
 
-    res.sendFile(path.join(clientPath, "index.html"));
+    res.sendFile(path.join(frontendPath, "index.html"));
   });
 
   // ======================
