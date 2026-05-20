@@ -97,8 +97,7 @@ export async function getOrCreateDeviceStatus() {
   if (existing.length > 0) return existing[0];
 
   await db.insert(deviceStatus).values({
-    meal1Completed: 0,
-    meal2Completed: 0,
+    completedMeals: [],
     isOnline: 0,
   });
 
