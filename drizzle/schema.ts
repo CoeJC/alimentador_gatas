@@ -44,8 +44,7 @@ export type InsertFeedingSession = typeof feedingSessions.$inferInsert;
  */
 export const deviceStatus = mysqlTable("device_status", {
   id: int("id").autoincrement().primaryKey(),
-  meal1Completed: int("meal1_completed").default(0).notNull(), // 0 ou 1
-  meal2Completed: int("meal2_completed").default(0).notNull(), // 0 ou 1
+  completedMeals: text("completed_meals").default("[]"),
   currentTime: varchar("current_time", { length: 64 }),
   nextMealTime: varchar("next_meal_time", { length: 64 }),
   isOnline: int("is_online").default(0).notNull(),
