@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,15 +10,35 @@ import { toast } from "sonner";
 
 export default function FeederDashboard() {
   const [autoRefresh, setAutoRefresh] = useState(true);
+  useEffect(() => {
+  carregarHistorico();
 
+  const interval = setInterval(() => {
+    carregarHistorico();
+  }, 5000);
+
+  return () => clearInterval(interval);
+}, []);
+  
   // Queries
   const statusQuery = trpc.feeder.getStatus.useQuery(undefined, {
     refetchInterval: autoRefresh ? 5000 : false,
   });
 
-  const historyQuery = trpc.feeder.getHistory.useQuery({ limit: 15 }, {
-    refetchInterval: autoRefresh ? 10000 : false,
-  });
+  const [history, setHistory] = useState<any[]>([]);
+
+async function carregarHistorico() {
+  try {
+    const response = await fetch("/device/history");
+    const json = await response.json();
+
+    if (json.success) {
+      setHistory(json.data);
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
 
   // Mutations
   const feedManuallyMutation = {
@@ -73,7 +93,6 @@ const status = {
     minute: 0,
   },
 ];
-  const history = historyQuery.data || [];
 
   const meal1Schedule = schedules.find((s) => s.mealNumber === 1);
   const meal2Schedule = schedules.find((s) => s.mealNumber === 2);
