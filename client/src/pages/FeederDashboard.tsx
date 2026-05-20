@@ -93,7 +93,7 @@ export default function FeederDashboard() {
   // =========================
   // STATUS FORMATADO
   // =========================
-  const apiDevice = statusQuery.data?.device;
+  const apiDevice = statusQuery.data?.data;
 
   const status = {
     meal1Completed: apiDevice?.meal1Completed || 0,
