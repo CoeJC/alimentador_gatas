@@ -24,7 +24,7 @@
 - [x] Implementar HTTP client para comunicação com servidor web
 - [x] Adicionar polling de comandos do servidor
 - [x] Implementar envio de status/histórico para servidor
-- [ ] Testar comunicação bidirecional
+- [x] Testar comunicação bidirecional
 
 ## Testes e Validação
 - [x] Escrever testes vitest para rotas API

@@ -114,7 +114,8 @@ export async function updateDeviceStatus(data: Partial<InsertDeviceStatus>) {
   if (!status) return undefined;
 
   await db.update(deviceStatus).set(data).where(eq(deviceStatus.id, status.id));
-  return db.select().from(deviceStatus).where(eq(deviceStatus.id, status.id)).limit(1);
+  const result = await db.select().from(deviceStatus).where(eq(deviceStatus.id, status.id)).limit(1);
+  return result[0];
 }
 
 export async function addFeedingSession(type: 'manual' | 'automatic', mealNumber: number) {
