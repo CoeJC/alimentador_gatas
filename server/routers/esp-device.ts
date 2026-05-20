@@ -1,144 +1,138 @@
-import { Router } from "express";
+import { z } from "zod";
+import { router, publicProcedure } from "../trpc";
 
-const router = Router();
+let pendingCommand: any = null;
 
-/**
- * GET /api/esp/health
- * Health check simples
- */
-router.get("/health", (req, res) => {
-  console.log("[ESP] Health check recebido");
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
-// Armazenamento em memória temporário
-let deviceStatusCache: any = {
+let deviceStatus = {
   meal1Completed: 0,
   meal2Completed: 0,
-  currentTime: "00:00",
+  meal3Completed: 0,
+  meal4Completed: 0,
+  meal5Completed: 0,
+  meal6Completed: 0,
+  currentTime: "--:--",
   isOnline: 0,
+  lastUpdate: null as Date | null,
 };
 
 let feedingHistory: any[] = [];
 
-/**
- * GET /api/esp/status
- * Retorna o status atual do dispositivo
- */
-router.get("/status", (req, res) => {
-  try {
-    res.json({
+export const espDeviceRouter = router({
+
+  // =========================
+  // STATUS
+  // =========================
+  getStatus: publicProcedure.query(() => {
+    return {
       success: true,
-      data: deviceStatusCache,
-    });
-  } catch (error) {
-    console.error("[ESP] Erro ao obter status:", error);
-    res.status(500).json({ success: false, error: "Erro ao obter status" });
-  }
-});
-
-/**
- * POST /api/esp/update-status
- * Atualiza o status do dispositivo (chamado pelo ESP8266)
- */
-router.post("/update-status", (req, res) => {
-  console.log("[ESP] Update status recebido:", req.body);
-  try {
-    const { meal1Completed, meal2Completed, currentTime, isOnline } = req.body;
-
-    if (meal1Completed !== undefined) deviceStatusCache.meal1Completed = meal1Completed;
-    if (meal2Completed !== undefined) deviceStatusCache.meal2Completed = meal2Completed;
-    if (currentTime !== undefined) deviceStatusCache.currentTime = currentTime;
-    if (isOnline !== undefined) deviceStatusCache.isOnline = isOnline;
-
-    console.log("[ESP] Status atualizado:", deviceStatusCache);
-
-    res.json({
-      success: true,
-      data: deviceStatusCache,
-    });
-  } catch (error) {
-    console.error("[ESP] Erro ao atualizar status:", error);
-    res.status(500).json({ success: false, error: "Erro ao atualizar status" });
-  }
-});
-
-/**
- * GET /api/esp/pending-command
- * Retorna um comando pendente para o ESP8266
- */
-router.get("/pending-command", (req, res) => {
-  try {
-    res.json({
-      success: true,
-      data: null,
-    });
-  } catch (error) {
-    console.error("[ESP] Erro ao obter comando pendente:", error);
-    res.status(500).json({ success: false, error: "Erro ao obter comando" });
-  }
-});
-
-/**
- * POST /api/esp/record-feeding
- * Registra uma alimentação (manual ou automática)
- */
-router.post("/record-feeding", (req, res) => {
-  try {
-    const { mealNumber, type } = req.body;
-
-    if (!mealNumber || (mealNumber !== 1 && mealNumber !== 2)) {
-      return res.status(400).json({
-        success: false,
-        error: "mealNumber deve ser 1 ou 2",
-      });
-    }
-
-    const feedingType = type === "manual" ? "manual" : "automatic";
-    const feeding = {
-      mealNumber,
-      type: feedingType,
-      timestamp: new Date().toISOString(),
+      data: deviceStatus,
     };
-    feedingHistory.push(feeding);
+  }),
 
-    console.log("[ESP] Alimentação registrada:", feeding);
+  // =========================
+  // UPDATE STATUS
+  // =========================
+  updateStatus: publicProcedure
+    .input(
+      z.object({
+        meal1Completed: z.number(),
+        meal2Completed: z.number(),
+        meal3Completed: z.number(),
+        meal4Completed: z.number(),
+        meal5Completed: z.number(),
+        meal6Completed: z.number(),
+        currentTime: z.string(),
+        isOnline: z.number(),
+      })
+    )
+    .mutation(({ input }) => {
 
-    res.json({
+      deviceStatus = {
+        ...input,
+        lastUpdate: new Date(),
+      };
+
+      return {
+        success: true,
+      };
+    }),
+
+  // =========================
+  // FEED MANUAL
+  // =========================
+  feedManual: publicProcedure
+    .input(
+      z.object({
+        mealNumber: z.number(),
+      })
+    )
+    .mutation(({ input }) => {
+
+      pendingCommand = {
+        type: `feed_meal_${input.mealNumber}`,
+        timestamp: new Date(),
+      };
+
+      return {
+        success: true,
+      };
+    }),
+
+  // =========================
+  // GET PENDING COMMAND
+  // =========================
+  getPendingCommand: publicProcedure.query(() => {
+
+    const command = pendingCommand;
+
+    pendingCommand = null;
+
+    return {
       success: true,
-      message: "Alimentação registrada",
-    });
-  } catch (error) {
-    console.error("[ESP] Erro ao registrar alimentação:", error);
-    res.status(500).json({ success: false, error: "Erro ao registrar" });
-  }
-});
+      data: command,
+    };
+  }),
 
-/**
- * POST /api/esp/complete-command
- * Marca um comando como completado
- */
-router.post("/complete-command", (req, res) => {
-  try {
-    const { commandId } = req.body;
+  // =========================
+  // RECORD FEEDING
+  // =========================
+  recordFeeding: publicProcedure
+    .input(
+      z.object({
+        mealNumber: z.number(),
+        type: z.string(),
+      })
+    )
+    .mutation(({ input }) => {
 
-    if (!commandId) {
-      return res.status(400).json({
-        success: false,
-        error: "commandId é obrigatório",
-      });
-    }
+      const newRecord = {
+        id: Date.now(),
+        mealNumber: input.mealNumber,
+        type: input.type,
+        timestamp: new Date(),
+      };
 
-    console.log("[ESP] Comando completado:", commandId);
+      feedingHistory.push(newRecord);
 
-    res.json({
+      // mantém apenas os últimos 100 registros
+      if (feedingHistory.length > 100) {
+        feedingHistory.shift();
+      }
+
+      return {
+        success: true,
+        data: newRecord,
+      };
+    }),
+
+  // =========================
+  // HISTORY
+  // =========================
+  getHistory: publicProcedure.query(() => {
+
+    return {
       success: true,
-      message: "Comando completado",
-    });
-  } catch (error) {
-    console.error("[ESP] Erro ao completar comando:", error);
-    res.status(500).json({ success: false, error: "Erro ao completar" });
-  }
+      data: feedingHistory,
+    };
+  }),
 });
-
-export default router;
