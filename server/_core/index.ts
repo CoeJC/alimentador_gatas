@@ -4,18 +4,18 @@ import { createServer } from "http";
 
 import { registerOAuthRoutes } from "./oauth";
 
-// 👇 IMPORTANTE: aqui deve vir um Router REAL (não objeto)
-import MenuRouter from "./menu"; // ajuste o caminho se necessário
+// 🔥 CORREÇÃO: ajustar caminho REAL do menu
+// No seu projeto, ele provavelmente está fora de _core
+import MenuRouter from "../menu"; // 👈 FIX PRINCIPAL
 
 export async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  // Middlewares básicos
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ extended: true }));
 
-  // CORS simples (opcional mas recomendado)
+  // CORS básico
   app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -23,7 +23,7 @@ export async function startServer() {
     next();
   });
 
-  // OAuth routes
+  // OAuth
   registerOAuthRoutes(app);
 
   // Healthcheck
@@ -31,7 +31,7 @@ export async function startServer() {
     res.json({ ok: true });
   });
 
-  // 🔥 ROTAS CORRETAS (AQUI estava seu erro)
+  // 🔥 ROTAS DO ALIMENTADOR
   app.use("/api/menu", MenuRouter);
 
   const PORT = process.env.PORT || 3000;
