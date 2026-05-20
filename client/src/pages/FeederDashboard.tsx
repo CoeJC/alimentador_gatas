@@ -49,8 +49,26 @@ export default function FeederDashboard() {
   isPending: false,
 };
 
-  const status = statusQuery.data?.device;
-  const schedules = statusQuery.data?.schedules || [];
+  const status = {
+  meal1Completed: statusQuery.data?.device?.meal1Completed || 0,
+  meal2Completed: statusQuery.data?.device?.meal2Completed || 0,
+  currentTime: statusQuery.data?.device?.currentTime || "--:--",
+  isOnline: 1,
+  nextMealTime: "08:00",
+  lastHeartbeat: new Date().toISOString(),
+};
+  const schedules = [
+  {
+    mealNumber: 1,
+    hour: 8,
+    minute: 0,
+  },
+  {
+    mealNumber: 2,
+    hour: 18,
+    minute: 0,
+  },
+];
   const history = historyQuery.data || [];
 
   const meal1Schedule = schedules.find((s) => s.mealNumber === 1);
