@@ -21,16 +21,33 @@ export default function FeederDashboard() {
   });
 
   // Mutations
-  const feedManuallyMutation = trpc.feeder.feedManually.useMutation({
-    onSuccess: () => {
+  const feedManuallyMutation = {
+  mutate: async ({ mealNumber }: { mealNumber: number }) => {
+    try {
+      const response = await fetch("/device/feed-manual", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mealNumber,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao enviar comando");
+      }
+
       toast.success("Alimentação manual acionada! 🐱");
+
       statusQuery.refetch();
       historyQuery.refetch();
-    },
-    onError: (error) => {
+    } catch (error: any) {
       toast.error(`Erro: ${error.message}`);
-    },
-  });
+    }
+  },
+  isPending: false,
+};
 
   const status = statusQuery.data?.device;
   const schedules = statusQuery.data?.schedules || [];
