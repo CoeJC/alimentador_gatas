@@ -104,6 +104,25 @@ router.get("/pending-command", (req, res) => {
 });
 
 // =====================================================
+// ALIMENTAÇÃO MANUAL (NOVO)
+// =====================================================
+
+router.post("/feed-manual", (req, res) => {
+  const { mealNumber } = req.body;
+
+  if (!mealNumber) {
+    return res.status(400).json({ error: "mealNumber required" });
+  }
+
+  // Cria um comando para o ESP8266
+  pendingCommand = `FEED_MANUAL:${mealNumber}`;
+
+  console.log("[MANUAL FEED] Comando enviado:", pendingCommand);
+
+  res.json({ success: true, message: "Alimentação manual enfileirada" });
+});
+
+// =====================================================
 // HISTÓRICO
 // =====================================================
 
