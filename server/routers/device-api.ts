@@ -9,7 +9,12 @@ const router = express.Router();
 let pendingCommand: string | null = null;
 
 let deviceStatus = {
-  completedMeals: [] as number[],
+  meal1Completed: 0,
+  meal2Completed: 0,
+  meal3Completed: 0,
+  meal4Completed: 0,
+  meal5Completed: 0,
+  meal6Completed: 0,
   currentTime: "--:--",
   isOnline: 0,
   lastUpdate: null as string | null,
@@ -22,25 +27,45 @@ let feedingHistory: any[] = [];
 // =====================================================
 
 router.post("/update-status", (req, res) => {
-
   const body = req.body;
 
-  deviceStatus = {
-    completedMeals: body.completedMeals || [],
-    currentTime: body.currentTime || "--:--",
-    isOnline: body.isOnline || 0,
-    lastUpdate: new Date().toISOString(),
-  };
+  // Aceita tanto o formato novo (meal1Completed, meal2Completed, etc)
+  // quanto o formato antigo (completedMeals array)
+  
+  if (body.meal1Completed !== undefined) {
+    // Novo formato com 6 refeições
+    deviceStatus = {
+      meal1Completed: body.meal1Completed || 0,
+      meal2Completed: body.meal2Completed || 0,
+      meal3Completed: body.meal3Completed || 0,
+      meal4Completed: body.meal4Completed || 0,
+      meal5Completed: body.meal5Completed || 0,
+      meal6Completed: body.meal6Completed || 0,
+      currentTime: body.currentTime || "--:--",
+      isOnline: body.isOnline || 0,
+      lastUpdate: new Date().toISOString(),
+    };
+  } else {
+    // Formato antigo (compatibilidade)
+    deviceStatus = {
+      meal1Completed: 0,
+      meal2Completed: 0,
+      meal3Completed: 0,
+      meal4Completed: 0,
+      meal5Completed: 0,
+      meal6Completed: 0,
+      currentTime: body.currentTime || "--:--",
+      isOnline: body.isOnline || 0,
+      lastUpdate: new Date().toISOString(),
+    };
+  }
 
   console.log("[STATUS]", deviceStatus);
 
-  res.json({
-    success: true,
-  });
+  res.json({ success: true });
 });
 
 router.get("/status", (req, res) => {
-
   res.json({
     success: true,
     data: deviceStatus,
@@ -48,38 +73,62 @@ router.get("/status", (req, res) => {
 });
 
 // =====================================================
+// COMANDOS
+// =====================================================
+
+router.post("/send-command", (req, res) => {
+  const { command } = req.body;
+
+  if (!command) {
+    return res.status(400).json({ error: "Command required" });
+  }
+
+  pendingCommand = command;
+
+  console.log("[COMMAND] Comando pendente:", command);
+
+  res.json({ success: true, message: "Comando enfileirado" });
+});
+
+router.get("/pending-command", (req, res) => {
+  if (!pendingCommand) {
+    return res.json({ success: true, data: null });
+  }
+
+  const command = pendingCommand;
+  pendingCommand = null;
+
+  console.log("[COMMAND] Comando enviado:", command);
+
+  res.json({ success: true, data: { command, timestamp: new Date().toISOString() } });
+});
+
+// =====================================================
 // HISTÓRICO
 // =====================================================
 
 router.post("/record-feeding", (req, res) => {
+  const { mealNumber, type } = req.body;
 
-  const body = req.body;
-
-  const registro = {
-    id: Date.now(),
-    mealNumber: body.mealNumber,
-    type: body.type,
+  const entry = {
+    mealNumber: mealNumber || 0,
+    type: type || "unknown",
     timestamp: new Date().toISOString(),
   };
 
-  feedingHistory.push(registro);
+  feedingHistory.push(entry);
 
-  // marca refeição como concluída
-  if (
-    !deviceStatus.completedMeals.includes(body.mealNumber)
-  ) {
-    deviceStatus.completedMeals.push(body.mealNumber);
+  // Manter apenas os últimos 100 registros
+  if (feedingHistory.length > 100) {
+    feedingHistory = feedingHistory.slice(-100);
   }
 
-  console.log("[HISTORICO]", registro);
+  console.log("[FEEDING]", entry);
 
-  res.json({
-    success: true,
-  });
+  res.json({ success: true });
 });
 
-router.get("/history", (req, res) => {
-
+router.get("/feeding-history", (req, res) => {
   res.json({
     success: true,
     data: feedingHistory,
@@ -87,59 +136,14 @@ router.get("/history", (req, res) => {
 });
 
 // =====================================================
-// COMANDO MANUAL
+// HEALTH CHECK
 // =====================================================
 
-router.post("/feed-manual", (req, res) => {
-
-  const body = req.body;
-
-  pendingCommand = `feed_meal_${body.mealNumber}`;
-
-  console.log("[COMANDO]", pendingCommand);
-
+router.get("/health", (req, res) => {
   res.json({
     success: true,
-  });
-});
-
-// =====================================================
-// ESP POLLING
-// =====================================================
-
-router.get("/pending-command", (req, res) => {
-
-  if (!pendingCommand) {
-
-    return res.json({
-      success: true,
-      data: null,
-    });
-  }
-
-  const command = pendingCommand;
-
-  pendingCommand = null;
-
-  res.json({
-    success: true,
-    data: {
-      type: command,
-      timestamp: new Date().toISOString(),
-    },
-  });
-});
-
-// =====================================================
-// RESET REFEIÇÕES
-// =====================================================
-
-router.post("/reset-meals", (req, res) => {
-
-  deviceStatus.completedMeals = [];
-
-  res.json({
-    success: true,
+    isDeviceOnline: deviceStatus.isOnline === 1,
+    lastUpdate: deviceStatus.lastUpdate,
   });
 });
 
