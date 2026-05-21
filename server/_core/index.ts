@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import path from "path";
+import deviceApiRouter from "../routers/device-api";
 
 import { registerOAuthRoutes } from "./oauth";
 import MenuRouter from "../menu";
@@ -27,6 +28,8 @@ export async function startServer() {
   // API PRIMEIRO (IMPORTANTE)
   // ======================
   registerOAuthRoutes(app);
+
+  app.use("/device", deviceApiRouter);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true });
