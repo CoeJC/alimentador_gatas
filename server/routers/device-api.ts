@@ -153,6 +153,42 @@ router.get("/status", (req, res) => {
 });
 
 /**
+ * POST /device/feed-manual
+ * Aciona alimentação manual (chamado pela interface web)
+ */
+router.post("/feed-manual", (req, res) => {
+  console.log("[DEVICE] Feed manual recebido:", req.body);
+  res.set("Content-Type", "application/json");
+  res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+  try {
+    const { mealNumber } = req.body;
+
+    if (!mealNumber || mealNumber < 1 || mealNumber > 6) {
+      return res.status(400).json({ success: false, error: "mealNumber inválido (1-6)" });
+    }
+
+    // Cria um comando para o ESP8266
+    const command = {
+      command: `FEED_MANUAL:${mealNumber}`,
+      timestamp: new Date().toISOString(),
+    };
+
+    pendingCommands.push(command);
+
+    console.log("[DEVICE] Comando enfileirado:", command);
+
+    res.json({
+      success: true,
+      message: "Alimentação manual enfileirada",
+      data: command,
+    });
+  } catch (error) {
+    console.error("[DEVICE] Erro ao acionar alimentação manual:", error);
+    res.status(500).json({ success: false, error: "Erro ao acionar alimentação manual" });
+  }
+});
+
+/**
  * GET /device/history
  * Retorna o histórico de alimentações do banco de dados
  */
