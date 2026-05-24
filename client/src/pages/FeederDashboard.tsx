@@ -357,25 +357,12 @@ export default function FeederDashboard() {
                 </p>
 
                 <p className="text-sm text-gray-700">
-<<<<<<< Updated upstream
-
-                  {status?.lastHeartbeat
-                    ? formatDistanceToNow(
-                        new Date(status.lastHeartbeat),
-                        {
-                          locale: ptBR,
-                          addSuffix: true,
-                        }
-                      )
-=======
                   {status?.lastSync
                     ? formatDistanceToNow(new Date(status.lastSync), {
                         locale: ptBR,
                         addSuffix: true,
                       })
->>>>>>> Stashed changes
                     : "Nunca"}
-
                 </p>
 
               </div>

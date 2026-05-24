@@ -1,50 +1,44 @@
-import {
-  pgTable,
-  serial,
-  text,
-  integer,
-  timestamp,
-} from "drizzle-orm/pg-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
-/*
-|--------------------------------------------------------------------------
-| STATUS DO ALIMENTADOR
-|--------------------------------------------------------------------------
-*/
-
-export const feederStatus = pgTable("feeder_status", {
-  id: serial("id").primaryKey(),
-
-  meal1Completed: integer("meal1_completed").default(0),
-  meal2Completed: integer("meal2_completed").default(0),
-  meal3Completed: integer("meal3_completed").default(0),
-  meal4Completed: integer("meal4_completed").default(0),
-  meal5Completed: integer("meal5_completed").default(0),
-  meal6Completed: integer("meal6_completed").default(0),
-
-  currentTime: text("current_time"),
-
-  isOnline: integer("is_online").default(0),
-
-  lastUpdate: timestamp("last_update").defaultNow(),
+/**
+ * Core user table backing auth flow.
+ * Extend this file with additional tables as your product grows.
+ * Columns use camelCase to match both database fields and generated types.
+ */
+export const users = mysqlTable("users", {
+  /**
+   * Surrogate primary key. Auto-incremented numeric value managed by the database.
+   * Use this for relations between tables.
+   */
+  id: int("id").autoincrement().primaryKey(),
+  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
+  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  name: text("name"),
+  email: varchar("email", { length: 320 }),
+  loginMethod: varchar("loginMethod", { length: 64 }),
+  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
-/*
-|--------------------------------------------------------------------------
-| HISTÓRICO DE ALIMENTAÇÕES
-|--------------------------------------------------------------------------
-*/
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
 
-export const feederHistory = pgTable("feeder_history", {
-  id: serial("id").primaryKey(),
+/**
+ * Histórico de alimentações realizadas
+ */
+export const feedingSessions = mysqlTable("feeding_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  type: mysqlEnum("type", ["manual", "automatic"]).notNull(),
+  mealNumber: int("meal_number").notNull(), // 1 a 6
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 
-  mealNumber: integer("meal_number").notNull(),
+export type FeedingSession = typeof feedingSessions.$inferSelect;
+export type InsertFeedingSession = typeof feedingSessions.$inferInsert;
 
-  type: text("type").notNull(),
-
-<<<<<<< Updated upstream
-  timestamp: timestamp("timestamp").defaultNow(),
-=======
 /**
  * Histórico de alimentações (para sincronização com ESP8266)
  */
@@ -75,19 +69,11 @@ export const deviceStatus = mysqlTable("device_status", {
   isOnline: int("is_online").default(0).notNull(),
   lastHeartbeat: timestamp("last_heartbeat").defaultNow().onUpdateNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
->>>>>>> Stashed changes
 });
 
-/*
-|--------------------------------------------------------------------------
-| COMANDOS PENDENTES
-|--------------------------------------------------------------------------
-*/
+export type DeviceStatus = typeof deviceStatus.$inferSelect;
+export type InsertDeviceStatus = typeof deviceStatus.$inferInsert;
 
-<<<<<<< Updated upstream
-export const pendingCommands = pgTable("pending_commands", {
-  id: serial("id").primaryKey(),
-=======
 /**
  * Horários programados para alimentação
  */
@@ -100,13 +86,10 @@ export const feedingSchedules = mysqlTable("feeding_schedules", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
->>>>>>> Stashed changes
 
-  command: text("command").notNull(),
+export type FeedingSchedule = typeof feedingSchedules.$inferSelect;
+export type InsertFeedingSchedule = typeof feedingSchedules.$inferInsert;
 
-<<<<<<< Updated upstream
-  createdAt: timestamp("created_at").defaultNow(),
-=======
 /**
  * Comandos pendentes para o ESP8266
  */
@@ -117,5 +100,7 @@ export const pendingCommands = mysqlTable("pending_commands", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   acknowledgedAt: timestamp("acknowledged_at"),
   completedAt: timestamp("completed_at"),
->>>>>>> Stashed changes
 });
+
+export type PendingCommand = typeof pendingCommands.$inferSelect;
+export type InsertPendingCommand = typeof pendingCommands.$inferInsert;

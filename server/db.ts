@@ -1,15 +1,23 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/mysql2";
+import { InsertUser, users, deviceStatus, feedingSessions, feedingSchedules, InsertDeviceStatus, pendingCommands, InsertPendingCommand, feedingHistory } from "../drizzle/schema";
+import { ENV } from './_core/env';
 
-const { Pool } = pg;
+let _db: ReturnType<typeof drizzle> | null = null;
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+// Lazily create the drizzle instance so local tooling can run without a DB.
+export async function getDb() {
+  if (!_db && process.env.DATABASE_URL) {
+    try {
+      _db = drizzle(process.env.DATABASE_URL);
+    } catch (error) {
+      console.warn("[Database] Failed to connect:", error);
+      _db = null;
+    }
+  }
+  return _db;
+}
 
-<<<<<<< Updated upstream
-export const db = drizzle(pool);
-=======
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
@@ -91,6 +99,10 @@ export async function getOrCreateDeviceStatus() {
   await db.insert(deviceStatus).values({
     meal1Completed: 0,
     meal2Completed: 0,
+    meal3Completed: 0,
+    meal4Completed: 0,
+    meal5Completed: 0,
+    meal6Completed: 0,
     isOnline: 0,
   });
 
@@ -132,10 +144,14 @@ export async function getFeedingSchedules() {
   if (!db) return [];
 
   const schedules = await db.select().from(feedingSchedules).orderBy((t) => t.mealNumber);
-  // Ensure we have both meals
+  // Ensure we have all 6 meals
   if (schedules.length === 0) {
-    await updateFeedingSchedule(1, 3, 18);
-    await updateFeedingSchedule(2, 3, 19);
+    await updateFeedingSchedule(1, 7, 50);
+    await updateFeedingSchedule(2, 10, 0);
+    await updateFeedingSchedule(3, 13, 30);
+    await updateFeedingSchedule(4, 18, 10);
+    await updateFeedingSchedule(5, 21, 0);
+    await updateFeedingSchedule(6, 23, 0);
     return getFeedingSchedules();
   }
   return schedules;
@@ -184,4 +200,3 @@ export async function completeCommand(commandId: number) {
 }
 
 // TODO: add feature queries here as your schema grows.
->>>>>>> Stashed changes
