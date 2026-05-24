@@ -18,6 +18,9 @@ export const deviceStatusCache: any = {
 
 export let pendingCommands: any[] = [];
 
+// Historico em memoria para nao depender do banco de dados
+let feedingHistoryMemory: any[] = [];
+
 /**
  * GET /device/health
  * Health check simples
@@ -31,7 +34,7 @@ router.get("/health", (req, res) => {
 
 /**
  * GET /device/pending-command
- * Retorna o próximo comando pendente
+ * Retorna o proximo comando pendente
  */
 router.get("/pending-command", (req, res) => {
   console.log("[DEVICE] Pending command recebido");
@@ -67,7 +70,7 @@ router.post("/update-status", (req, res) => {
   try {
     const { meal1Completed, meal2Completed, meal3Completed, meal4Completed, meal5Completed, meal6Completed, currentTime, isOnline } = req.body;
 
-    // Atualiza o cache compartilhado com suporte a 6 refeições
+    // Atualiza o cache compartilhado com suporte a 6 refeicoes
     if (meal1Completed !== undefined) deviceStatusCache.meal1Completed = meal1Completed;
     if (meal2Completed !== undefined) deviceStatusCache.meal2Completed = meal2Completed;
     if (meal3Completed !== undefined) deviceStatusCache.meal3Completed = meal3Completed;
@@ -92,10 +95,10 @@ router.post("/update-status", (req, res) => {
 
 /**
  * POST /device/record-feeding
- * Registra uma alimentação (chamado pelo ESP8266)
- * Salva no banco de dados
+ * Registra uma alimentacao (chamado pelo ESP8266)
+ * Salva em memoria temporaria (rapido, sem depender do banco de dados)
  */
-router.post("/record-feeding", async (req, res) => {
+router.post("/record-feeding", (req, res) => {
   console.log("[DEVICE] Record feeding recebido:", req.body);
   res.set("Content-Type", "application/json");
   res.set("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -103,20 +106,7 @@ router.post("/record-feeding", async (req, res) => {
     const { mealNumber, type } = req.body;
 
     if (!mealNumber || !type) {
-      return res.status(400).json({ success: false, error: "mealNumber e type são obrigatórios" });
-    }
-
-    // Salva no banco de dados
-    const db = await getDb();
-    if (db) {
-      await db.insert(feedingHistory).values({
-        mealNumber,
-        type,
-        timestamp: new Date(),
-      });
-      console.log("[DEVICE] Alimentação salva no banco de dados");
-    } else {
-      console.warn("[DEVICE] Banco de dados não disponível, alimentação não foi salva");
+      return res.status(400).json({ success: false, error: "mealNumber e type sao obrigatorios" });
     }
 
     const feeding = {
@@ -125,16 +115,33 @@ router.post("/record-feeding", async (req, res) => {
       timestamp: new Date().toISOString(),
     };
 
-    console.log("[DEVICE] Alimentação registrada:", feeding);
+    // Salva em memoria
+    feedingHistoryMemory.push(feeding);
+    console.log("[DEVICE] Alimentacao registrada em memoria:", feeding);
+
+    // Tenta salvar no banco de dados de forma assincrona (sem bloquear)
+    if (global.getDb) {
+      global.getDb().then((db: any) => {
+        if (db) {
+          db.insert(feedingHistory).values({
+            mealNumber,
+            type,
+            timestamp: new Date(),
+          }).catch((err: any) => {
+            console.warn("[DEVICE] Erro ao salvar no BD (assincrono):", err);
+          });
+        }
+      });
+    }
 
     res.json({
       success: true,
-      message: "Alimentação registrada com sucesso",
+      message: "Alimentacao registrada com sucesso",
       data: feeding,
     });
   } catch (error) {
-    console.error("[DEVICE] Erro ao registrar alimentação:", error);
-    res.status(500).json({ success: false, error: "Erro ao registrar alimentação" });
+    console.error("[DEVICE] Erro ao registrar alimentacao:", error);
+    res.status(500).json({ success: false, error: "Erro ao registrar alimentacao" });
   }
 });
 
@@ -154,7 +161,7 @@ router.get("/status", (req, res) => {
 
 /**
  * POST /device/feed-manual
- * Aciona alimentação manual (chamado pela interface web)
+ * Aciona alimentacao manual (chamado pela interface web)
  */
 router.post("/feed-manual", (req, res) => {
   console.log("[DEVICE] Feed manual recebido:", req.body);
@@ -164,7 +171,7 @@ router.post("/feed-manual", (req, res) => {
     const { mealNumber } = req.body;
 
     if (!mealNumber || mealNumber < 1 || mealNumber > 6) {
-      return res.status(400).json({ success: false, error: "mealNumber inválido (1-6)" });
+      return res.status(400).json({ success: false, error: "mealNumber invalido (1-6)" });
     }
 
     // Cria um comando para o ESP8266
@@ -179,41 +186,31 @@ router.post("/feed-manual", (req, res) => {
 
     res.json({
       success: true,
-      message: "Alimentação manual enfileirada",
+      message: "Alimentacao manual enfileirada",
       data: command,
     });
   } catch (error) {
-    console.error("[DEVICE] Erro ao acionar alimentação manual:", error);
-    res.status(500).json({ success: false, error: "Erro ao acionar alimentação manual" });
+    console.error("[DEVICE] Erro ao acionar alimentacao manual:", error);
+    res.status(500).json({ success: false, error: "Erro ao acionar alimentacao manual" });
   }
 });
 
 /**
  * GET /device/history
- * Retorna o histórico de alimentações do banco de dados
+ * Retorna o historico de alimentacoes
  */
-router.get("/history", async (req, res) => {
+router.get("/history", (req, res) => {
   console.log("[DEVICE] History recebido");
   res.set("Content-Type", "application/json");
   res.set("Cache-Control", "no-cache, no-store, must-revalidate");
   try {
-    const db = await getDb();
-    let history: any[] = [];
-
-    if (db) {
-      history = await db.select().from(feedingHistory).orderBy(feedingHistory.id);
-      console.log("[DEVICE] Histórico obtido do banco de dados:", history.length, "registros");
-    } else {
-      console.warn("[DEVICE] Banco de dados não disponível");
-    }
-
     res.json({
       success: true,
-      data: history,
+      data: feedingHistoryMemory,
     });
   } catch (error) {
-    console.error("[DEVICE] Erro ao obter histórico:", error);
-    res.status(500).json({ success: false, error: "Erro ao obter histórico" });
+    console.error("[DEVICE] Erro ao obter historico:", error);
+    res.status(500).json({ success: false, error: "Erro ao obter historico" });
   }
 });
 
