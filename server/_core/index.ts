@@ -35,10 +35,6 @@ export async function startServer() {
     res.json({ ok: true });
   });
 
-  app.get("/device/pending-command", (_req, res) => {
-    res.json({ command: null });
-  });
-
   app.use("/api/menu", MenuRouter);
 
   // ======================
