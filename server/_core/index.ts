@@ -53,49 +53,7 @@ export async function startServer() {
     res.sendFile(path.join(frontendPath, "index.html"));
   });
 
-  // ======================
-  // SERVIDOR HTTP PARA ESP8266 (porta 3001)
-  // ======================
-  const httpApp = express();
-  httpApp.use(express.json({ limit: "50mb" }));
-  httpApp.use(express.urlencoded({ extended: true }));
 
-  // Rota de health check
-  httpApp.get("/device/health", (_req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
-  });
-
-  // Rota de pending command
-  httpApp.get("/device/pending-command", (_req, res) => {
-    res.set("Content-Type", "application/json");
-    res.set("Cache-Control", "no-cache, no-store, must-revalidate");
-    // Repassa para o router do device-api
-    deviceApiRouter((_req as any), res);
-  });
-
-  // Rota de record feeding
-  httpApp.post("/device/record-feeding", (req, res) => {
-    // Repassa para o router do device-api
-    deviceApiRouter(req as any, res);
-  });
-
-  // Rota de update status
-  httpApp.post("/device/update-status", (req, res) => {
-    // Repassa para o router do device-api
-    deviceApiRouter(req as any, res);
-  });
-
-  // Rota de feed manual
-  httpApp.post("/device/feed-manual", (req, res) => {
-    // Repassa para o router do device-api
-    deviceApiRouter(req as any, res);
-  });
-
-  const HTTP_PORT = 3001;
-  const httpServer = createServer(httpApp);
-  httpServer.listen(HTTP_PORT, "0.0.0.0", () => {
-    console.log(`🐱 Servidor HTTP para ESP8266 rodando na porta ${HTTP_PORT}`);
-  });
 
   // ======================
   // START
