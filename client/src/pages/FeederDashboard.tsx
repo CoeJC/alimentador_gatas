@@ -247,16 +247,18 @@ export default function FeederDashboard() {
 
   const getTypeLabel = (type: string) => {
 
-    return type === "manual"
-      ? "Manual"
-      : "Automática";
+    if (type === "manual" || type === "botao") {
+      return "Manual";
+    }
+    return "Automática";
   };
 
   const getTypeColor = (type: string) => {
 
-    return type === "manual"
-      ? "bg-blue-100 text-blue-800"
-      : "bg-purple-100 text-purple-800";
+    if (type === "manual" || type === "botao") {
+      return "bg-blue-100 text-blue-800";
+    }
+    return "bg-purple-100 text-purple-800";
   };
 
   /*
